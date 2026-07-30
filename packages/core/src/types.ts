@@ -51,6 +51,22 @@ export interface AuthStatus {
   detail?: string;
 }
 
+export interface Timeslot {
+  id: string;
+  start: string; // ISO-8601 UTC
+  end: string;
+  fulfillmentType: string; // "PICKUP" | "DELIVERY"
+  daysInAdvance: number;
+  price: Price | null;
+}
+
+export interface TimeslotTier {
+  tier: string; // ASAP | EXPRESS | SCHEDULED | ...
+  title: string;
+  subtitle: string;
+  slots: Timeslot[];
+}
+
 export interface OrderPreview {
   itemCount: number;
   subtotal: number | null;
@@ -80,6 +96,8 @@ export interface GroceryProvider {
   getCart(): Promise<Cart>;
   /** qty is ABSOLUTE. 0 removes the line. */
   setItem(productId: string, skuId: string, qty: number): Promise<SetItemResult>;
+  /** List available pickup/delivery timeslots (read-only). Optional per provider. */
+  listTimeslots?(storeNumber?: number): Promise<TimeslotTier[]>;
   /** Read-only summary of what an order would contain. Optional per provider. */
   previewOrder?(): Promise<OrderPreview>;
   /**

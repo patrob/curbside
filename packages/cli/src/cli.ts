@@ -166,6 +166,49 @@ async function cmdSet(flags: Flags, verb: "add" | "rm"): Promise<number> {
   return 0;
 }
 
+async function cmdSlots(flags: Flags): Promise<number> {
+  const provider = getProvider(flags.provider);
+  if (!provider.listTimeslots) {
+    console.error(`✗ ${provider.label} has no timeslot support.`);
+    return 1;
+  }
+  const tiers = await provider.listTimeslots();
+  if (flags.json) {
+    console.log(JSON.stringify(tiers, null, 2));
+    return 0;
+  }
+  const tz = "America/Chicago";
+  const startFmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const endFmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  let shown = 0;
+  for (const t of tiers) {
+    if (!t.slots.length) continue;
+    console.log(`\n${t.title}${t.subtitle ? ` — ${t.subtitle}` : ""}`);
+    for (const s of t.slots.slice(0, flags.limit)) {
+      console.log(
+        `  ${startFmt.format(new Date(s.start))}–${endFmt.format(new Date(s.end))}  ${money(
+          s.price?.amount ?? null,
+        )}  ${s.id}`,
+      );
+      shown++;
+    }
+    if (t.slots.length > flags.limit) console.log(`  … +${t.slots.length - flags.limit} more`);
+  }
+  if (!shown) console.log("No timeslots available.");
+  return 0;
+}
+
 async function cmdOrder(flags: Flags): Promise<number> {
   const provider = getProvider(flags.provider);
   if (!provider.previewOrder || !provider.placeOrder) {
@@ -217,6 +260,7 @@ Usage:
   curbside cart [--json]                     Show the current cart
   curbside add <term|pid:sku> <qty> [-y]     Set a line to an absolute qty (dry-run without -y)
   curbside rm  <term|pid:sku> [-y]           Remove a line (dry-run without -y)
+  curbside slots [-n N] [--json]             List available curbside pickup timeslots
   curbside order [--place] [-y]              Preview an order; --place submits (real money, OFF by default)
   curbside providers                         List providers
 
@@ -247,6 +291,8 @@ async function main(): Promise<number> {
       case "rm":
       case "remove":
         return await cmdSet(flags, "rm");
+      case "slots":
+        return await cmdSlots(flags);
       case "order":
         return await cmdOrder(flags);
       case "providers":

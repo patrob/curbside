@@ -28,4 +28,6 @@ export const PERSISTED_QUERIES = {
   cartItemV2: "41798e22dc94f2ce6f483bde6e60638b1486c74f59f37e4b088b5627accf394b",
   // QUERY — read the current cart estimate (lines + subtotal).
   cartEstimated: "40a67f78dd7c214c120ee1dacaae52905541ac7ff9b30ed6dfafe6c2300bf2af",
+  // QUERY — list available curbside PICKUP timeslots for a store (read-only).
+  listPickupTimeslotsV2: "d6b90d098521c1bd6d88116834d86b325d5713c933cfddef3d0be0650e594d44",
 } as const;

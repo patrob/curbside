@@ -8,6 +8,8 @@ import {
   type Cart,
   type CookieJar,
   type SetItemResult,
+  type Timeslot,
+  type TimeslotTier,
 } from "@curbside/core";
 import { HEB, PERSISTED_QUERIES, storeId } from "./config.ts";
 import { HebParse } from "./parse.ts";
@@ -114,6 +116,31 @@ export class HebClient {
       throw new Error("Could not parse cartEstimated shape (dumped to debug/cart.json)");
     }
     return cart;
+  }
+
+  /** List available curbside PICKUP timeslots for a store (read-only). */
+  async listTimeslots(storeNumber: number = storeId()): Promise<TimeslotTier[]> {
+    const data = await this.#graphql<{ listPickupTimeslotsV2?: { slotsByTier?: unknown[] } }>(
+      "listPickupTimeslotsV2",
+      { preCheckout: true, isHebNowEstimatesEnabled: true, storeNumber, limit: 2147483647 },
+      PERSISTED_QUERIES.listPickupTimeslotsV2,
+    );
+    const tiers = (data?.listPickupTimeslotsV2?.slotsByTier ?? []) as Array<Record<string, any>>;
+    return tiers.map((t): TimeslotTier => ({
+      tier: String(t.tier ?? ""),
+      title: String(t.title ?? ""),
+      subtitle: String(t.subtitle ?? ""),
+      slots: ((t.slots ?? []) as Array<Record<string, any>>).map((s): Timeslot => ({
+        id: String(s.id ?? s.recordId ?? ""),
+        start: String(s.start ?? ""),
+        end: String(s.end ?? ""),
+        fulfillmentType: String(s.fulfillmentType ?? "PICKUP"),
+        daysInAdvance: Number(s.daysInAdvance ?? 0),
+        price: s.totalPrice
+          ? { amount: s.totalPrice.amount ?? null, formatted: s.totalPrice.formattedAmount ?? null }
+          : null,
+      })),
+    }));
   }
 
   /** qty is ABSOLUTE. 0 removes the line. Always compute from the current cart first. */

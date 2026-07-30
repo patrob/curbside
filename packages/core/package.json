@@ -1,0 +1,17 @@
+{
+  "name": "@curbside/core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Provider interface + shared runtime (cookie jar, CDP harvest, side-copy Chrome) for the curbside CLI.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ]
+}

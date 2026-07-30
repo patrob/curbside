@@ -47,7 +47,7 @@ export function cookieHeaderFor(jar: CookieJar, url: string): string {
   for (const c of jar.cookies) {
     if (!domainMatches(c.domain, host)) continue;
     if (typeof c.expires === "number" && c.expires > 0 && c.expires < nowSec) continue;
-    if (seen.has(c.name)) continue; // first match wins (most-specific ordering is caller's job)
+    if (seen.has(c.name)) continue; // first match wins
     seen.add(c.name);
     parts.push(`${c.name}=${c.value}`);
   }

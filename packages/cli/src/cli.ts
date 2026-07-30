@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createInterface } from "node:readline/promises";
-import { getProvider, listProviders, DEFAULT_PROVIDER } from "./providers/registry.ts";
-import { AuthRequiredError, type Candidate } from "./providers/types.ts";
+import { AuthRequiredError, type Candidate } from "@curbside/core";
+import { getProvider, listProviders, DEFAULT_PROVIDER } from "./registry.ts";
 
 interface Flags {
   provider: string;
@@ -13,26 +13,37 @@ interface Flags {
 }
 
 function parse(argv: string[]): Flags {
-  const f: Flags = { provider: DEFAULT_PROVIDER, limit: 8, json: false, execute: false, yes: false, _: [] };
+  const f: Flags = {
+    provider: DEFAULT_PROVIDER,
+    limit: 8,
+    json: false,
+    execute: false,
+    yes: false,
+    _: [],
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     if (a === "--provider" || a === "-p") f.provider = argv[++i]!;
     else if (a === "--limit" || a === "-n") f.limit = Number(argv[++i]);
     else if (a === "--json") f.json = true;
     else if (a === "--execute") f.execute = true;
-    else if (a === "--yes" || a === "-y") { f.yes = true; f.execute = true; }
-    else f._.push(a);
+    else if (a === "--yes" || a === "-y") {
+      f.yes = true;
+      f.execute = true;
+    } else f._.push(a);
   }
   return f;
 }
 
-const money = (n: number | null) => (n == null ? "  —  " : `$${n.toFixed(2)}`);
+const money = (n: number | null): string => (n == null ? "  —  " : `$${n.toFixed(2)}`);
 
 function printCandidate(c: Candidate, idx?: number): void {
   const tag = idx != null ? `${String(idx + 1).padStart(2)}. ` : "";
   const stock = c.stock && c.stock !== "IN_STOCK" ? ` [${c.stock}]` : "";
   const curb = c.curbside ? "" : " (no curbside)";
-  console.log(`${tag}${money(c.price?.amount ?? null)}  ${c.name}${c.size ? `  · ${c.size}` : ""}${stock}${curb}`);
+  console.log(
+    `${tag}${money(c.price?.amount ?? null)}  ${c.name}${c.size ? `  · ${c.size}` : ""}${stock}${curb}`,
+  );
   console.log(`     ${c.productId}:${c.skuId ?? "?"}`);
 }
 
@@ -45,7 +56,10 @@ async function confirm(question: string): Promise<boolean> {
 }
 
 /** Resolve an item argument to {productId, skuId, name}. Either "pid:sku" or a search term. */
-async function resolveItem(flags: Flags, arg: string): Promise<{ productId: string; skuId: string; name: string } | null> {
+async function resolveItem(
+  flags: Flags,
+  arg: string,
+): Promise<{ productId: string; skuId: string; name: string } | null> {
   const direct = arg.match(/^([^:\s]+):([^:\s]+)$/);
   if (direct) return { productId: direct[1]!, skuId: direct[2]!, name: arg };
 
@@ -56,10 +70,10 @@ async function resolveItem(flags: Flags, arg: string): Promise<{ productId: stri
     return null;
   }
   const top = hits[0]!;
-  // Unambiguous enough if the runner-up is >25% pricier or clearly different size.
-  const ambiguous = hits.length > 1 && !flags.yes;
-  if (ambiguous) {
-    console.log(`Multiple matches for "${arg}" — pick one and pass it as productId:sku, or re-run with -y to take #1:`);
+  if (hits.length > 1 && !flags.yes) {
+    console.log(
+      `Multiple matches for "${arg}" — pick one and pass it as productId:sku, or re-run with -y to take #1:`,
+    );
     hits.slice(0, 5).forEach((c, i) => printCandidate(c, i));
     return null;
   }
@@ -70,17 +84,27 @@ async function cmdAuth(flags: Flags): Promise<number> {
   const provider = getProvider(flags.provider);
   console.log(`Authenticating ${provider.label}…`);
   const status = await provider.auth({ port: 9222 });
-  console.log(status.authenticated ? `✓ ${provider.label} authenticated. ${status.detail ?? ""}` : `✗ ${status.detail ?? "not authenticated"}`);
+  console.log(
+    status.authenticated
+      ? `✓ ${provider.label} authenticated. ${status.detail ?? ""}`
+      : `✗ ${status.detail ?? "not authenticated"}`,
+  );
   return status.authenticated ? 0 : 1;
 }
 
 async function cmdSearch(flags: Flags): Promise<number> {
   const term = flags._.join(" ");
-  if (!term) return usage("search needs a term: curbside search \"whole milk\"");
+  if (!term) return usage('search needs a term: curbside search "whole milk"');
   const provider = getProvider(flags.provider);
   const hits = await provider.search(term, flags.limit);
-  if (flags.json) { console.log(JSON.stringify(hits, null, 2)); return 0; }
-  if (hits.length === 0) { console.log(`No matches for "${term}".`); return 0; }
+  if (flags.json) {
+    console.log(JSON.stringify(hits, null, 2));
+    return 0;
+  }
+  if (hits.length === 0) {
+    console.log(`No matches for "${term}".`);
+    return 0;
+  }
   hits.forEach((c, i) => printCandidate(c, i));
   return 0;
 }
@@ -88,19 +112,31 @@ async function cmdSearch(flags: Flags): Promise<number> {
 async function cmdCart(flags: Flags): Promise<number> {
   const provider = getProvider(flags.provider);
   const cart = await provider.getCart();
-  if (flags.json) { console.log(JSON.stringify(cart, null, 2)); return 0; }
-  if (cart.lines.length === 0) { console.log("Cart is empty."); return 0; }
-  for (const l of cart.lines) console.log(`  ${String(l.quantity).padStart(2)}×  ${money(l.price?.amount ?? null)}  ${l.name}`);
-  console.log(`  ${"".padStart(2)}    ${money(cart.subtotal)}  Subtotal (${cart.itemCount} items)`);
+  if (flags.json) {
+    console.log(JSON.stringify(cart, null, 2));
+    return 0;
+  }
+  if (cart.lines.length === 0) {
+    console.log("Cart is empty.");
+    return 0;
+  }
+  for (const l of cart.lines) {
+    console.log(
+      `  ${String(l.quantity).padStart(2)}×  ${money(l.price?.amount ?? null)}  ${l.name}`,
+    );
+  }
+  console.log(`      ${money(cart.subtotal)}  Subtotal (${cart.itemCount} items)`);
   return 0;
 }
 
 async function cmdSet(flags: Flags, verb: "add" | "rm"): Promise<number> {
   const provider = getProvider(flags.provider);
   const arg = flags._[0];
-  if (!arg) return usage(`${verb} needs an item: curbside ${verb} "milk"${verb === "add" ? " 2" : ""}`);
+  if (!arg)
+    return usage(`${verb} needs an item: curbside ${verb} "milk"${verb === "add" ? " 2" : ""}`);
   const qty = verb === "rm" ? 0 : Number(flags._[1] ?? "1");
-  if (verb === "add" && (!Number.isFinite(qty) || qty < 1)) return usage("add needs a quantity ≥ 1");
+  if (verb === "add" && (!Number.isFinite(qty) || qty < 1))
+    return usage("add needs a quantity ≥ 1");
 
   const item = await resolveItem(flags, arg);
   if (!item) return 1;
@@ -109,14 +145,23 @@ async function cmdSet(flags: Flags, verb: "add" | "rm"): Promise<number> {
   if (!flags.execute) {
     console.log(`[dry-run] would ${action}`);
     console.log(`          ${item.productId}:${item.skuId}`);
-    console.log(`Re-run with -y to execute, or --execute after a confirm prompt.`);
+    console.log("Re-run with -y to execute, or --execute after a confirm prompt.");
     return 0;
   }
-  if (!flags.yes && !(await confirm(`${action}?`))) { console.log("Aborted."); return 1; }
+  if (!flags.yes && !(await confirm(`${action}?`))) {
+    console.log("Aborted.");
+    return 1;
+  }
 
   const r = await provider.setItem(item.productId, item.skuId, qty);
-  if (r.stale) { console.error(`✗ STALE persisted-query hash — nothing changed. ${r.errors.join("; ")}`); return 2; }
-  if (!r.ok) { console.error(`✗ failed: ${r.errors.join("; ")}`); return 1; }
+  if (r.stale) {
+    console.error(`✗ STALE persisted-query hash — nothing changed. ${r.errors.join("; ")}`);
+    return 2;
+  }
+  if (!r.ok) {
+    console.error(`✗ failed: ${r.errors.join("; ")}`);
+    return 1;
+  }
   console.log(`✓ ${qty === 0 ? "removed" : `set to ${qty}`}: ${item.name}`);
   return 0;
 }
@@ -149,14 +194,27 @@ async function main(): Promise<number> {
   const flags = parse(rest);
   try {
     switch (cmd) {
-      case "auth": return await cmdAuth(flags);
-      case "search": return await cmdSearch(flags);
-      case "cart": return await cmdCart(flags);
-      case "add": return await cmdSet(flags, "add");
-      case "rm": case "remove": return await cmdSet(flags, "rm");
-      case "providers": console.log(listProviders().join("\n")); return 0;
-      case undefined: case "help": case "-h": case "--help": return usage();
-      default: return usage(`unknown command "${cmd}"`);
+      case "auth":
+        return await cmdAuth(flags);
+      case "search":
+        return await cmdSearch(flags);
+      case "cart":
+        return await cmdCart(flags);
+      case "add":
+        return await cmdSet(flags, "add");
+      case "rm":
+      case "remove":
+        return await cmdSet(flags, "rm");
+      case "providers":
+        console.log(listProviders().join("\n"));
+        return 0;
+      case undefined:
+      case "help":
+      case "-h":
+      case "--help":
+        return usage();
+      default:
+        return usage(`unknown command "${cmd}"`);
     }
   } catch (e) {
     if (e instanceof AuthRequiredError) {

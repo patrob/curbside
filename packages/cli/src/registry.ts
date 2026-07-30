@@ -1,9 +1,11 @@
-import { HebProvider } from "./heb/index.ts";
-import type { GroceryProvider } from "./types.ts";
+import type { GroceryProvider } from "@curbside/core";
+import { HebProvider } from "@curbside/heb";
 
+// The composition root: the CLI is the only place that knows which providers exist.
+// A third party ships `@yourorg/curbside-walmart` implementing @curbside/core's
+// GroceryProvider and registers it here (or via a future plugin-discovery mechanism).
 const PROVIDERS: Record<string, () => GroceryProvider> = {
   heb: () => new HebProvider(),
-  // Future: walmart, kroger, instacart — each implements GroceryProvider.
 };
 
 export const DEFAULT_PROVIDER = "heb";

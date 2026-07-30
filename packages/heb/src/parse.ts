@@ -1,5 +1,5 @@
+import type { Candidate, Cart, CartLine, Price } from "@curbside/core";
 import { HEB } from "./config.ts";
-import type { Candidate, Cart, CartLine, Price } from "../types.ts";
 
 // H-E-B product names carry non-breaking spaces (`Fresh Beefsteak\xa0Tomatoes`).
 export function normalizeName(s: string): string {
@@ -11,7 +11,7 @@ interface NextData {
   props?: { pageProps?: { layout?: { visualComponents?: Array<{ items?: unknown[] }> } } };
 }
 
-function priceFromSku(sku: any): Price | null {
+function priceFromSku(sku: Record<string, any>): Price | null {
   const cps: any[] = sku?.contextPrices ?? [];
   const cp = cps.find((p) => p?.context === HEB.priceContext) ?? cps[0];
   if (!cp) return null;
@@ -41,7 +41,7 @@ export const HebParse = {
     const comps = data.props?.pageProps?.layout?.visualComponents ?? [];
     // Take the first component with a non-empty items array — do NOT assume index 0.
     const comp = comps.find((c) => Array.isArray(c.items) && c.items.length > 0);
-    const items = (comp?.items ?? []) as any[];
+    const items = (comp?.items ?? []) as Array<Record<string, any>>;
     return items.slice(0, limit).map((p): Candidate => {
       const sku = p?.SKUs?.[0];
       return {
@@ -63,9 +63,9 @@ export const HebParse = {
 
   /**
    * Best-effort cart parser. The exact cartEstimated shape isn't documented, so we walk
-   * the response for the first array of objects that look like cart lines and pull a
-   * subtotal from any `*subtotal*`/`*estimatedTotal*` numeric field. If HEB's shape
-   * differs, the caller dumps raw JSON to debug/cart.json so we can tighten this.
+   * the response for objects that look like cart lines and pull a subtotal from any
+   * `*subtotal*`/`*estimatedTotal*` numeric field. If HEB's shape differs, the caller
+   * dumps raw JSON to debug/cart.json so we can tighten this.
    */
   cart(data: unknown): Cart | null {
     const lines: CartLine[] = [];
@@ -87,14 +87,15 @@ export const HebParse = {
         }
         if (subtotal == null && /subtotal/i.test(k) && typeof v === "number") subtotal = v;
       }
-      // A cart line looks like it has a productId/skuId and a quantity.
       const pid = node.productId ?? node.product?.id;
       const qty = node.quantity ?? node.qty;
       if (pid != null && typeof qty === "number") {
         lines.push({
           productId: String(pid),
           skuId: node.skuId != null ? String(node.skuId) : (node.sku?.id ?? null),
-          name: normalizeName(String(node.displayName ?? node.name ?? node.product?.fullDisplayName ?? "")),
+          name: normalizeName(
+            String(node.displayName ?? node.name ?? node.product?.fullDisplayName ?? ""),
+          ),
           quantity: qty,
           price: node.SKUs?.[0] ? priceFromSku(node.SKUs[0]) : null,
         });
@@ -104,7 +105,7 @@ export const HebParse = {
 
     visit(data);
     if (lines.length === 0 && subtotal == null) return null;
-    // De-dupe lines that the walker may have visited twice.
+    // De-dupe lines the walker may have visited twice.
     const seen = new Map<string, CartLine>();
     for (const l of lines) seen.set(`${l.productId}:${l.skuId}`, l);
     const deduped = [...seen.values()];

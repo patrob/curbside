@@ -1,23 +1,29 @@
 {
-  "name": "curbside",
+  "name": "curbside-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "Provider-pluggable grocery CLI. Authenticate once, then drive curbside/delivery carts from the terminal — no browser after auth. First provider: H-E-B.",
   "type": "module",
-  "bin": {
-    "curbside": "./dist/cli.js"
-  },
+  "description": "Provider-pluggable grocery CLI. Authenticate once, then drive curbside/delivery carts from the terminal — no browser after auth.",
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "curbside": "node --experimental-strip-types src/cli.ts",
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "node --experimental-strip-types src/cli.ts"
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "typecheck": "tsc -b",
+    "lint": "oxlint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "oxlint && tsc -b && prettier --check .",
+    "curbside": "node packages/cli/dist/cli.js"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
-    "typescript": "^5.7.0"
+    "@types/node": "^26.1.2",
+    "oxlint": "^1.76.0",
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2"
   }
 }

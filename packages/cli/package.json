@@ -1,0 +1,16 @@
+{
+  "name": "@curbside/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The `curbside` command — provider-pluggable grocery CLI.",
+  "bin": {
+    "curbside": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@curbside/core": "*",
+    "@curbside/heb": "*"
+  }
+}

@@ -1,5 +1,3 @@
-import { HebClient } from "./client.ts";
-import { hebAuth } from "./auth.ts";
 import type {
   AuthOptions,
   AuthStatus,
@@ -7,7 +5,9 @@ import type {
   Cart,
   GroceryProvider,
   SetItemResult,
-} from "../types.ts";
+} from "@curbside/core";
+import { HebClient } from "./client.ts";
+import { hebAuth } from "./auth.ts";
 
 export class HebProvider implements GroceryProvider {
   readonly id = "heb";
@@ -20,7 +20,7 @@ export class HebProvider implements GroceryProvider {
   async checkAuth(): Promise<AuthStatus> {
     try {
       const client = HebClient.load();
-      await client.search("milk", 1); // cheapest authed-ish read; throws AuthRequiredError if bounced
+      await client.search("milk", 1); // cheapest read; throws AuthRequiredError if bounced
       return { authenticated: true };
     } catch (e) {
       return { authenticated: false, detail: e instanceof Error ? e.message : String(e) };

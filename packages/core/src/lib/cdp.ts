@@ -1,6 +1,5 @@
 // Minimal Chrome DevTools Protocol client over the built-in WebSocket (Node >=22).
-// Zero dependencies. We only need two things: read all cookies, and eval a bit of JS
-// on a page to confirm login state.
+// Zero dependencies. We only need to read all cookies (incl. httpOnly) off the browser.
 import type { StoredCookie } from "./cookies.ts";
 
 interface Pending {
@@ -12,7 +11,7 @@ export class CdpClient {
   #ws: WebSocket;
   #id = 0;
   #pending = new Map<number, Pending>();
-  #sessionId?: string;
+  #sessionId: string | undefined;
 
   private constructor(ws: WebSocket, sessionId?: string) {
     this.#ws = ws;
@@ -62,14 +61,6 @@ export class CdpClient {
   async getAllCookies(): Promise<StoredCookie[]> {
     const { cookies } = await this.send<{ cookies: StoredCookie[] }>("Storage.getCookies");
     return cookies;
-  }
-
-  /** First page target's URL, or null if only about:blank / no page open. */
-  async firstPageUrl(port = 9222): Promise<string | null> {
-    const res = await fetch(`http://127.0.0.1:${port}/json`);
-    const targets = (await res.json()) as Array<{ type: string; url: string }>;
-    const page = targets.find((t) => t.type === "page");
-    return page?.url ?? null;
   }
 
   close(): void {

@@ -74,7 +74,9 @@ export interface GroceryProvider {
 export class AuthRequiredError extends Error {
   providerId: string;
   constructor(providerId: string, detail: string) {
-    super(`${providerId}: session expired or challenged (${detail}). Run: curbside auth ${providerId}`);
+    super(
+      `${providerId}: session expired or challenged (${detail}). Run: curbside auth ${providerId}`,
+    );
     this.name = "AuthRequiredError";
     this.providerId = providerId;
   }

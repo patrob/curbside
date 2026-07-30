@@ -1,9 +1,16 @@
 import fs from "node:fs";
+import {
+  AuthRequiredError,
+  cookieHeaderFor,
+  loadJar,
+  debugDumpPath,
+  type Candidate,
+  type Cart,
+  type CookieJar,
+  type SetItemResult,
+} from "@curbside/core";
 import { HEB, PERSISTED_QUERIES } from "./config.ts";
 import { HebParse } from "./parse.ts";
-import { AuthRequiredError, type Candidate, type Cart, type SetItemResult } from "../types.ts";
-import { cookieHeaderFor, loadJar, type CookieJar } from "../../lib/cookies.ts";
-import { debugDumpPath } from "../../lib/paths.ts";
 
 const PROVIDER = "heb";
 
@@ -87,7 +94,7 @@ export class HebClient {
     if (errs.some((m) => /PersistedQueryNotFound/i.test(m))) {
       throw new Error(
         `${operationName}: persisted-query hash is STALE (PersistedQueryNotFound). ` +
-          `Re-capture the hash — see README "Refreshing hashes". This did NOT run.`,
+          `Re-capture the hash — see README "Refreshing the persisted-query hashes". This did NOT run.`,
       );
     }
     if (errs.length) throw new Error(`${operationName}: ${errs.join("; ")}`);

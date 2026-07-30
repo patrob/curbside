@@ -22,7 +22,7 @@ $ curbside cart
 ## How it works
 
 The trick (via [@jlongster](https://x.com/jlongster) / [@thdxr](https://x.com/thdxr)): a website's
-own network calls *are* its API. Record them once, derive a client, and you never need the browser
+own network calls _are_ its API. Record them once, derive a client, and you never need the browser
 again for normal operations.
 
 1. **`curbside auth`** launches a debug Chrome off a **side-copy** of your logged-in profile (your
@@ -45,14 +45,14 @@ browser for normal ops.
 
 ## Commands
 
-| command | what it does |
-|---|---|
-| `curbside auth [-p heb]` | harvest / refresh the logged-in session |
-| `curbside search <term> [-n N] [--json]` | search products, curbside pricing |
-| `curbside cart [--json]` | show the current cart |
-| `curbside add <term\|pid:sku> <qty> [-y]` | set a line to an **absolute** qty |
-| `curbside rm <term\|pid:sku> [-y]` | remove a line (qty 0) |
-| `curbside providers` | list providers |
+| command                                   | what it does                            |
+| ----------------------------------------- | --------------------------------------- |
+| `curbside auth [-p heb]`                  | harvest / refresh the logged-in session |
+| `curbside search <term> [-n N] [--json]`  | search products, curbside pricing       |
+| `curbside cart [--json]`                  | show the current cart                   |
+| `curbside add <term\|pid:sku> <qty> [-y]` | set a line to an **absolute** qty       |
+| `curbside rm <term\|pid:sku> [-y]`        | remove a line (qty 0)                   |
+| `curbside providers`                      | list providers                          |
 
 **Writes are dry-run unless you pass `-y`.** They never check out, never change the pickup slot,
 store, or time.
@@ -64,26 +64,49 @@ quantity a line already holds returns `200` and changes nothing (a silent no-op)
 reads the cart to report the real before/after, and a stale persisted-query hash fails **loud**
 (`PersistedQueryNotFound`) rather than looking like success.
 
+## Layout
+
+An npm-workspaces monorepo — providers are packages, so a third party can publish one without
+forking the core:
+
+```
+packages/
+  core/   @curbside/core   GroceryProvider interface + shared runtime (cookie jar, CDP harvest, side-copy Chrome)
+  heb/    @curbside/heb    H-E-B provider — the reference implementation
+  cli/    @curbside/cli    the `curbside` binary + provider registry (composition root)
+```
+
+Dependency direction is one-way: `core ← heb ← cli`. Only the CLI knows which providers exist.
+
 ## Adding a provider
 
-Implement `GroceryProvider` (`src/providers/types.ts`) — `auth`, `checkAuth`, `search`, `getCart`,
-`setItem` — and register it in `src/providers/registry.ts`. HEB (`src/providers/heb/`) is the
-reference. Walmart / Kroger / Instacart are the obvious next ones.
+Implement `GroceryProvider` from `@curbside/core` — `auth`, `checkAuth`, `search`, `getCart`,
+`setItem` — in a new `packages/<name>/` (or a separately published `@yourorg/curbside-<name>`),
+then register it in `packages/cli/src/registry.ts`. `@curbside/heb` is the reference. Walmart /
+Kroger / Instacart are the obvious next ones.
 
 ## Refreshing the persisted-query hashes
 
-The GraphQL hashes in `src/providers/heb/config.ts` belong to a deployed frontend build and rotate
-without warning. When one goes stale you'll get `PersistedQueryNotFound`. To re-capture: open a
-product page in the debug browser with a CDP network logger attached, do the action once in the UI,
-and read the new `sha256Hash` off the wire.
+The GraphQL hashes in `packages/heb/src/config.ts` belong to a deployed frontend build and rotate
+without warning. When one goes stale you'll get `PersistedQueryNotFound` (the client fails loud, not
+silent). To re-capture: open a product page in the debug browser with a CDP network logger attached,
+do the action once in the UI, and read the new `sha256Hash` off the wire.
 
 ## Develop
 
+Toolchain: **TypeScript 7** (native compiler, project references), **oxlint**, **Prettier**,
+Node ≥ 22. Zero runtime dependencies.
+
 ```
 npm install
-npm run typecheck        # tsc, strict
-node src/cli.ts search milk   # Node 22+ runs .ts directly (type-stripping)
-npm run build            # emit dist/ for the `curbside` bin
+npm run build          # tsc -b — builds core → heb → cli in order
+npm run lint           # oxlint
+npm run format         # prettier --write
+npm run verify         # oxlint && tsc -b && prettier --check   (the full gate)
+npm run curbside -- search milk
+
+# put `curbside` on PATH:
+npm run build && npm link -w @curbside/cli
 ```
 
 ## ⚠️ Before you open-source this

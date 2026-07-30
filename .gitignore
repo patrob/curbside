@@ -1,5 +1,6 @@
 node_modules/
-dist/
+**/dist/
+**/*.tsbuildinfo
 
 # Secrets — never commit. Cookie jars carry a live logged-in session.
 .cache/

@@ -4,8 +4,7 @@ import path from "node:path";
 import { spawn, execFileSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
-const CHROME =
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 /** Is a CDP endpoint already listening on this port? */
 export async function cdpAlive(port: number): Promise<boolean> {
@@ -22,7 +21,7 @@ export async function cdpAlive(port: number): Promise<boolean> {
 /**
  * Chrome 136+ refuses --remote-debugging-port on the default profile and cannot have one
  * added at runtime, so we side-copy the logged-in profile and launch a SECOND instance
- * against the copy. Patrick's everyday browser is never touched.
+ * against the copy. The everyday browser is never touched.
  */
 export function sideCopyProfile(): string {
   const home = os.homedir();
@@ -38,11 +37,11 @@ export function sideCopyProfile(): string {
   copy("Local State");
   copy("Default/Cookies");
   copy("Default/Local Storage", true);
-  copy("Default/Network", true); // where the encrypted cookie DB actually lives on newer Chrome
+  copy("Default/Network", true); // where the encrypted cookie DB lives on newer Chrome
   return dst;
 }
 
-/** Launch (or reuse) a debug Chrome on `port`, returns when CDP answers. */
+/** Launch (or reuse) a debug Chrome on `port`; resolves when CDP answers. */
 export async function ensureDebugChrome(port = 9222): Promise<{ reused: boolean }> {
   if (await cdpAlive(port)) return { reused: true };
   const profile = sideCopyProfile();
@@ -58,10 +57,13 @@ export async function ensureDebugChrome(port = 9222): Promise<{ reused: boolean 
     { detached: true, stdio: "ignore" },
   );
   child.unref();
+  // Sequential by design: each poll gates the next; parallelizing makes no sense here.
+  /* eslint-disable no-await-in-loop */
   for (let i = 0; i < 30; i++) {
     if (await cdpAlive(port)) return { reused: false };
     await sleep(500);
   }
+  /* eslint-enable no-await-in-loop */
   throw new Error(`Chrome did not expose CDP on port ${port} within 15s`);
 }
 

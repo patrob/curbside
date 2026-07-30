@@ -1,0 +1,13 @@
+node_modules/
+dist/
+
+# Secrets — never commit. Cookie jars carry a live logged-in session.
+.cache/
+*.cookies.json
+cookies.json
+
+# Debug dumps captured when a response fails to parse.
+.debug/
+
+# OS
+.DS_Store

@@ -9,7 +9,7 @@ import {
   type CookieJar,
   type SetItemResult,
 } from "@curbside/core";
-import { HEB, PERSISTED_QUERIES } from "./config.ts";
+import { HEB, PERSISTED_QUERIES, storeId } from "./config.ts";
 import { HebParse } from "./parse.ts";
 
 const PROVIDER = "heb";
@@ -105,7 +105,7 @@ export class HebClient {
   async getCart(): Promise<Cart> {
     const data = await this.#graphql<unknown>(
       "cartEstimated",
-      { shoppingContext: HEB.shoppingContext, storeId: String(HEB.defaultStoreId) },
+      { shoppingContext: HEB.shoppingContext, storeId: String(storeId()) },
       PERSISTED_QUERIES.cartEstimated,
     );
     const cart = HebParse.cart(data);

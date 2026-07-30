@@ -166,6 +166,47 @@ async function cmdSet(flags: Flags, verb: "add" | "rm"): Promise<number> {
   return 0;
 }
 
+async function cmdOrder(flags: Flags): Promise<number> {
+  const provider = getProvider(flags.provider);
+  if (!provider.previewOrder || !provider.placeOrder) {
+    console.error(`✗ ${provider.label} does not support ordering.`);
+    return 1;
+  }
+
+  const preview = await provider.previewOrder();
+  console.log(
+    `Order preview (${provider.label}): ${preview.itemCount} items, ${money(preview.subtotal)}` +
+      (preview.slot ? `, slot ${preview.slot}` : ""),
+  );
+
+  const place = flags._.includes("--place") || flags.execute;
+  if (!place) {
+    console.log("Order placement is OFF. Re-run with --place to enable (this spends real money).");
+    return 0;
+  }
+  if (preview.itemCount === 0) {
+    console.error("✗ Cart is empty — nothing to place.");
+    return 1;
+  }
+
+  // --place still requires an explicit confirmation unless -y.
+  if (
+    !flags.yes &&
+    !(await confirm(`Place a REAL ${provider.label} order for ${money(preview.subtotal)}?`))
+  ) {
+    console.log("Aborted — no order placed.");
+    return 1;
+  }
+
+  const result = await provider.placeOrder();
+  if (!result.placed) {
+    console.error(`✗ Not placed: ${result.detail}`);
+    return 2;
+  }
+  console.log(`✓ Order placed${result.orderId ? ` (#${result.orderId})` : ""}. ${result.detail}`);
+  return 0;
+}
+
 function usage(msg?: string): number {
   if (msg) console.error(`error: ${msg}\n`);
   console.log(`curbside — provider-pluggable grocery CLI
@@ -176,6 +217,7 @@ Usage:
   curbside cart [--json]                     Show the current cart
   curbside add <term|pid:sku> <qty> [-y]     Set a line to an absolute qty (dry-run without -y)
   curbside rm  <term|pid:sku> [-y]           Remove a line (dry-run without -y)
+  curbside order [--place] [-y]              Preview an order; --place submits (real money, OFF by default)
   curbside providers                         List providers
 
 Flags:
@@ -205,6 +247,8 @@ async function main(): Promise<number> {
       case "rm":
       case "remove":
         return await cmdSet(flags, "rm");
+      case "order":
+        return await cmdOrder(flags);
       case "providers":
         console.log(listProviders().join("\n"));
         return 0;

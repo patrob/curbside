@@ -51,6 +51,18 @@ export interface AuthStatus {
   detail?: string;
 }
 
+export interface OrderPreview {
+  itemCount: number;
+  subtotal: number | null;
+  slot?: string;
+}
+
+export interface OrderResult {
+  placed: boolean;
+  detail: string;
+  orderId?: string;
+}
+
 export interface AuthOptions {
   /** Prompt for an emailed/OTP code when the provider requires a fresh interactive login. */
   onCodeNeeded?: (context: string) => Promise<string>;
@@ -68,6 +80,14 @@ export interface GroceryProvider {
   getCart(): Promise<Cart>;
   /** qty is ABSOLUTE. 0 removes the line. */
   setItem(productId: string, skuId: string, qty: number): Promise<SetItemResult>;
+  /** Read-only summary of what an order would contain. Optional per provider. */
+  previewOrder?(): Promise<OrderPreview>;
+  /**
+   * Submit a real order — real money. OFF by default in the CLI (gated behind --place +
+   * confirmation). Optional per provider; a provider that hasn't wired checkout returns
+   * `{ placed: false, ... }` rather than firing blind.
+   */
+  placeOrder?(): Promise<OrderResult>;
 }
 
 /** Thrown when the stored session is stale / bounced by bot protection. */

@@ -4,6 +4,8 @@ import type {
   Candidate,
   Cart,
   GroceryProvider,
+  OrderPreview,
+  OrderResult,
   SetItemResult,
 } from "@curbside/core";
 import { HebClient } from "./client.ts";
@@ -37,5 +39,22 @@ export class HebProvider implements GroceryProvider {
 
   setItem(productId: string, skuId: string, qty: number): Promise<SetItemResult> {
     return HebClient.load().setItem(productId, skuId, qty);
+  }
+
+  async previewOrder(): Promise<OrderPreview> {
+    const cart = await HebClient.load().getCart();
+    return { itemCount: cart.itemCount, subtotal: cart.subtotal };
+  }
+
+  async placeOrder(): Promise<OrderResult> {
+    // Deliberately not wired. HEB's checkout/submit mutation only appears on the wire
+    // when a real order is actually placed, so it can't be captured without spending
+    // real money. Wiring it is a joint, deliberate step — never fire blind.
+    return {
+      placed: false,
+      detail:
+        "HEB checkout is not wired. Placing a real order needs its submit mutation captured " +
+        "in a supervised session (real money) — the CLI will not fire it blind.",
+    };
   }
 }

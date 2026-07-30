@@ -12,10 +12,16 @@ export const HEB = {
   fallbackBuildId: "26326fc8754e2064814ac43e35c75829f2910496",
   userAgent:
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
-  defaultStoreId: 415, // Schertz H-E-B plus!
+  defaultStoreId: 1, // generic default; override with CURBSIDE_HEB_STORE_ID
   shoppingContext: "CURBSIDE_PICKUP",
   priceContext: "CURBSIDE",
 } as const;
+
+/** Store selector — public, not a secret, but user-specific, so it's env-overridable. */
+export function storeId(): number {
+  const env = Number(process.env.CURBSIDE_HEB_STORE_ID);
+  return Number.isFinite(env) && env > 0 ? env : HEB.defaultStoreId;
+}
 
 export const PERSISTED_QUERIES = {
   // MUTATION — add / set-qty / remove a cart line. quantity is ABSOLUTE; 0 removes.

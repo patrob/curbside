@@ -52,10 +52,26 @@ browser for normal ops.
 | `curbside cart [--json]`                  | show the current cart                   |
 | `curbside add <term\|pid:sku> <qty> [-y]` | set a line to an **absolute** qty       |
 | `curbside rm <term\|pid:sku> [-y]`        | remove a line (qty 0)                   |
+| `curbside order [--place] [-y]`           | preview an order; `--place` submits     |
 | `curbside providers`                      | list providers                          |
 
-**Writes are dry-run unless you pass `-y`.** They never check out, never change the pickup slot,
-store, or time.
+**Cart writes are dry-run unless you pass `-y`.** They never check out, never change the pickup
+slot, store, or time.
+
+### Placing an order
+
+`curbside order` is **read-only by default** — it prints a preview and stops. Actual submission is
+opt-in: it requires `--place`, and then a typed confirmation (skip with `-y`). Because a real order
+spends real money, providers that haven't wired their checkout call return "not placed" rather than
+firing blind — the HEB provider ships in exactly that state until its submit mutation is captured in
+a supervised session.
+
+## Config
+
+| env var                 | default | meaning                                           |
+| ----------------------- | ------- | ------------------------------------------------- |
+| `CURBSIDE_HEB_STORE_ID` | `1`     | your H-E-B store number (find it in the site URL) |
+| `CURBSIDE_HOME`         | —       | override where the cookie jar is stored (tests)   |
 
 ### The absolute-quantity trap
 
@@ -109,9 +125,11 @@ npm run curbside -- search milk
 npm run build && npm link -w @curbside/cli
 ```
 
-## ⚠️ Before you open-source this
+## ⚠️ Disclaimer
 
-This reverse-engineers H-E-B's private GraphQL and rides through their bot protection, which their
-terms of service almost certainly prohibit, and the persisted-query hashes are brittle by design.
-Publishing it is a legal gray area (C&D risk) and a maintenance treadmill. Decide with eyes open.
-The cookie jar is a live logged-in session — it stays gitignored and never leaves the machine.
+This is an unofficial, personal project with no affiliation to H-E-B. It talks to H-E-B's private
+GraphQL endpoints and rides through their bot protection, which their terms of service likely
+prohibit; the reverse-engineered persisted-query hashes are brittle and rotate without notice. Use
+it against your own account, at your own risk. It never places an order without `--place` and an
+explicit confirmation. Your cookie jar is a live logged-in session — it is gitignored and never
+committed; keep it that way.

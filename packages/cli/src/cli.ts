@@ -196,10 +196,9 @@ async function cmdSlots(flags: Flags): Promise<number> {
     if (!t.slots.length) continue;
     console.log(`\n${t.title}${t.subtitle ? ` — ${t.subtitle}` : ""}`);
     for (const s of t.slots.slice(0, flags.limit)) {
+      const cost = s.isFree ? "FREE " : money(s.price?.amount ?? null);
       console.log(
-        `  ${startFmt.format(new Date(s.start))}–${endFmt.format(new Date(s.end))}  ${money(
-          s.price?.amount ?? null,
-        )}  ${s.id}`,
+        `  ${startFmt.format(new Date(s.start))}–${endFmt.format(new Date(s.end))}  ${cost.padEnd(6)} ${s.id}`,
       );
       shown++;
     }

@@ -136,6 +136,7 @@ export class HebClient {
         end: String(s.end ?? ""),
         fulfillmentType: String(s.fulfillmentType ?? "PICKUP"),
         daysInAdvance: Number(s.daysInAdvance ?? 0),
+        isFree: Boolean(s.isFree) || (s.totalPrice?.amount ?? 0) === 0,
         price: s.totalPrice
           ? { amount: s.totalPrice.amount ?? null, formatted: s.totalPrice.formattedAmount ?? null }
           : null,

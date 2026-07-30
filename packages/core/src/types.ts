@@ -57,6 +57,8 @@ export interface Timeslot {
   end: string;
   fulfillmentType: string; // "PICKUP" | "DELIVERY"
   daysInAdvance: number;
+  /** True when the slot has no fee. Fee amount (if any) is in `price`. */
+  isFree: boolean;
   price: Price | null;
 }
 

@@ -9,7 +9,6 @@ import {
   type CookieJar,
   type SetItemResult,
   type Timeslot,
-  type TimeslotTier,
   type ReserveOptions,
   type ReserveResult,
 } from "@curbside/core";
@@ -120,30 +119,52 @@ export class HebClient {
     return cart;
   }
 
-  /** List available curbside PICKUP timeslots for a store (read-only). */
-  async listTimeslots(storeNumber: number = storeId()): Promise<TimeslotTier[]> {
-    const data = await this.#graphql<{ listPickupTimeslotsV2?: { slotsByTier?: unknown[] } }>(
+  /**
+   * List curbside PICKUP timeslots for a store, flat + chronological (read-only).
+   * The response carries HEB-Now tiers in `slotsByTier` AND all scheduled daily slots
+   * in `slotsByDay[].slotsByGroup[].slots` — we merge both and de-dupe by id.
+   */
+  async listTimeslots(storeNumber: number = storeId()): Promise<Timeslot[]> {
+    const data = await this.#graphql<{
+      listPickupTimeslotsV2?: {
+        slotsByTier?: Array<Record<string, any>>;
+        slotsByDay?: Array<Record<string, any>>;
+      };
+    }>(
       "listPickupTimeslotsV2",
       { preCheckout: true, isHebNowEstimatesEnabled: true, storeNumber, limit: 2147483647 },
       PERSISTED_QUERIES.listPickupTimeslotsV2,
     );
-    const tiers = (data?.listPickupTimeslotsV2?.slotsByTier ?? []) as Array<Record<string, any>>;
-    return tiers.map((t): TimeslotTier => ({
-      tier: String(t.tier ?? ""),
-      title: String(t.title ?? ""),
-      subtitle: String(t.subtitle ?? ""),
-      slots: ((t.slots ?? []) as Array<Record<string, any>>).map((s): Timeslot => ({
-        id: String(s.id ?? s.recordId ?? ""),
-        start: String(s.start ?? ""),
-        end: String(s.end ?? ""),
-        fulfillmentType: String(s.fulfillmentType ?? "PICKUP"),
-        daysInAdvance: Number(s.daysInAdvance ?? 0),
-        isFree: Boolean(s.isFree) || (s.totalPrice?.amount ?? 0) === 0,
-        price: s.totalPrice
-          ? { amount: s.totalPrice.amount ?? null, formatted: s.totalPrice.formattedAmount ?? null }
-          : null,
-      })),
-    }));
+    const root = data?.listPickupTimeslotsV2 ?? {};
+    const toSlot = (s: Record<string, any>, tier: string): Timeslot => ({
+      id: String(s.id ?? s.recordId ?? ""),
+      start: String(s.start ?? ""),
+      end: String(s.end ?? ""),
+      fulfillmentType: String(s.fulfillmentType ?? "PICKUP"),
+      daysInAdvance: Number(s.daysInAdvance ?? 0),
+      isFree: Boolean(s.isFree) || (s.totalPrice?.amount ?? 0) === 0,
+      price: s.totalPrice
+        ? { amount: s.totalPrice.amount ?? null, formatted: s.totalPrice.formattedAmount ?? null }
+        : null,
+      tier,
+    });
+
+    const byId = new Map<string, Timeslot>();
+    for (const t of root.slotsByTier ?? []) {
+      for (const s of (t.slots ?? []) as Array<Record<string, any>>) {
+        const slot = toSlot(s, String(t.title ?? t.tier ?? ""));
+        if (slot.id) byId.set(slot.id, slot);
+      }
+    }
+    for (const day of root.slotsByDay ?? []) {
+      for (const g of (day.slotsByGroup ?? []) as Array<Record<string, any>>) {
+        for (const s of (g.slots ?? []) as Array<Record<string, any>>) {
+          const slot = toSlot(s, String(g.title ?? g.group ?? ""));
+          if (slot.id && !byId.has(slot.id)) byId.set(slot.id, slot);
+        }
+      }
+    }
+    return [...byId.values()].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   }
 
   /**

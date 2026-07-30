@@ -60,13 +60,8 @@ export interface Timeslot {
   /** True when the slot has no fee. Fee amount (if any) is in `price`. */
   isFree: boolean;
   price: Price | null;
-}
-
-export interface TimeslotTier {
-  tier: string; // ASAP | EXPRESS | SCHEDULED | ...
-  title: string;
-  subtitle: string;
-  slots: Timeslot[];
+  /** Group/tier label, e.g. "Under 2 hours", "Morning", "Evening". */
+  tier?: string;
 }
 
 export interface ReserveOptions {
@@ -111,8 +106,8 @@ export interface GroceryProvider {
   getCart(): Promise<Cart>;
   /** qty is ABSOLUTE. 0 removes the line. */
   setItem(productId: string, skuId: string, qty: number): Promise<SetItemResult>;
-  /** List available pickup/delivery timeslots (read-only). Optional per provider. */
-  listTimeslots?(storeNumber?: number): Promise<TimeslotTier[]>;
+  /** List available pickup/delivery timeslots, flat + chronological (read-only). */
+  listTimeslots?(storeNumber?: number): Promise<Timeslot[]>;
   /** Reserve (hold) a timeslot against the cart. No charge; reversible. Optional per provider. */
   reserveTimeslot?(slotId: string, opts?: ReserveOptions): Promise<ReserveResult>;
   /** Read-only summary of what an order would contain. Optional per provider. */

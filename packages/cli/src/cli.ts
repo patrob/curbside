@@ -177,39 +177,46 @@ async function cmdSlots(flags: Flags): Promise<number> {
     console.error(`✗ ${provider.label} has no timeslot support.`);
     return 1;
   }
-  const tiers = await provider.listTimeslots();
+  const slots = await provider.listTimeslots();
   if (flags.json) {
-    console.log(JSON.stringify(tiers, null, 2));
+    console.log(JSON.stringify(slots, null, 2));
+    return 0;
+  }
+  if (!slots.length) {
+    console.log("No timeslots available.");
     return 0;
   }
   const tz = "America/Chicago";
-  const startFmt = new Intl.DateTimeFormat("en-US", {
+  const dayFmt = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
-    weekday: "short",
+    weekday: "long",
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   });
-  const endFmt = new Intl.DateTimeFormat("en-US", {
+  const timeFmt = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
     hour: "numeric",
     minute: "2-digit",
   });
-  let shown = 0;
-  for (const t of tiers) {
-    if (!t.slots.length) continue;
-    console.log(`\n${t.title}${t.subtitle ? ` — ${t.subtitle}` : ""}`);
-    for (const s of t.slots.slice(0, flags.limit)) {
+
+  // Group chronologically by local day.
+  const byDay = new Map<string, typeof slots>();
+  for (const s of slots) {
+    const day = dayFmt.format(new Date(s.start));
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day)!.push(s);
+  }
+  for (const [day, daySlots] of byDay) {
+    const free = daySlots.filter((s) => s.isFree).length;
+    console.log(`\n${day}  (${daySlots.length} slots, ${free} free)`);
+    for (const s of daySlots.slice(0, flags.limit)) {
       const cost = s.isFree ? "FREE " : money(s.price?.amount ?? null);
       console.log(
-        `  ${startFmt.format(new Date(s.start))}–${endFmt.format(new Date(s.end))}  ${cost.padEnd(6)} ${s.id}`,
+        `  ${timeFmt.format(new Date(s.start))}–${timeFmt.format(new Date(s.end))}  ${cost.padEnd(6)} ${s.id}`,
       );
-      shown++;
     }
-    if (t.slots.length > flags.limit) console.log(`  … +${t.slots.length - flags.limit} more`);
+    if (daySlots.length > flags.limit) console.log(`  … +${daySlots.length - flags.limit} more`);
   }
-  if (!shown) console.log("No timeslots available.");
   return 0;
 }
 

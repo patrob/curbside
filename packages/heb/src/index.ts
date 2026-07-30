@@ -9,7 +9,7 @@ import type {
   ReserveOptions,
   ReserveResult,
   SetItemResult,
-  TimeslotTier,
+  Timeslot,
 } from "@curbside/core";
 import { HebClient } from "./client.ts";
 import { hebAuth } from "./auth.ts";
@@ -44,7 +44,7 @@ export class HebProvider implements GroceryProvider {
     return HebClient.load().setItem(productId, skuId, qty);
   }
 
-  listTimeslots(storeNumber?: number): Promise<TimeslotTier[]> {
+  listTimeslots(storeNumber?: number): Promise<Timeslot[]> {
     return HebClient.load().listTimeslots(storeNumber);
   }
 

@@ -30,4 +30,6 @@ export const PERSISTED_QUERIES = {
   cartEstimated: "40a67f78dd7c214c120ee1dacaae52905541ac7ff9b30ed6dfafe6c2300bf2af",
   // QUERY — list available curbside PICKUP timeslots for a store (read-only).
   listPickupTimeslotsV2: "d6b90d098521c1bd6d88116834d86b325d5713c933cfddef3d0be0650e594d44",
+  // MUTATION — reserve (hold) a timeslot against the cart. No charge; reversible.
+  reserveTimeslot: "a77771231ea10fbd89c732255ea4cd07bee302833f9649587eb58a68e76c5ec6",
 } as const;

@@ -10,6 +10,8 @@ import {
   type SetItemResult,
   type Timeslot,
   type TimeslotTier,
+  type ReserveOptions,
+  type ReserveResult,
 } from "@curbside/core";
 import { HEB, PERSISTED_QUERIES, storeId } from "./config.ts";
 import { HebParse } from "./parse.ts";
@@ -142,6 +144,41 @@ export class HebClient {
           : null,
       })),
     }));
+  }
+
+  /**
+   * Reserve (hold) a timeslot against the cart. No charge — the fee (if any) only
+   * applies at checkout, and reserving another slot overwrites this one.
+   */
+  async reserveTimeslot(slotId: string, opts: ReserveOptions = {}): Promise<ReserveResult> {
+    const storeNumber = opts.storeNumber ?? storeId();
+    const fulfillmentType = opts.channel === "delivery" ? "DELIVERY" : "PICKUP";
+    // HEB's `date` is the slot's LOCAL calendar date (Central for HEB Texas).
+    const date =
+      opts.date ??
+      new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+    try {
+      await this.#graphql(
+        "ReserveTimeslot",
+        {
+          id: slotId,
+          date,
+          fulfillmentType,
+          pickupStoreId: String(storeNumber),
+          ignoreCartConflicts: false,
+          storeId: storeNumber,
+          userIsLoggedIn: true,
+        },
+        PERSISTED_QUERIES.reserveTimeslot,
+      );
+      return {
+        reserved: true,
+        detail: `held ${fulfillmentType.toLowerCase()} slot for ${date}`,
+        slotId,
+      };
+    } catch (e) {
+      return { reserved: false, detail: e instanceof Error ? e.message : String(e), slotId };
+    }
   }
 
   /** qty is ABSOLUTE. 0 removes the line. Always compute from the current cart first. */

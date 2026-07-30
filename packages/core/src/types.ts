@@ -69,6 +69,19 @@ export interface TimeslotTier {
   slots: Timeslot[];
 }
 
+export interface ReserveOptions {
+  /** Local calendar date of the slot (YYYY-MM-DD). Defaults to today. */
+  date?: string;
+  channel?: "pickup" | "delivery";
+  storeNumber?: number;
+}
+
+export interface ReserveResult {
+  reserved: boolean;
+  detail: string;
+  slotId: string;
+}
+
 export interface OrderPreview {
   itemCount: number;
   subtotal: number | null;
@@ -100,6 +113,8 @@ export interface GroceryProvider {
   setItem(productId: string, skuId: string, qty: number): Promise<SetItemResult>;
   /** List available pickup/delivery timeslots (read-only). Optional per provider. */
   listTimeslots?(storeNumber?: number): Promise<TimeslotTier[]>;
+  /** Reserve (hold) a timeslot against the cart. No charge; reversible. Optional per provider. */
+  reserveTimeslot?(slotId: string, opts?: ReserveOptions): Promise<ReserveResult>;
   /** Read-only summary of what an order would contain. Optional per provider. */
   previewOrder?(): Promise<OrderPreview>;
   /**

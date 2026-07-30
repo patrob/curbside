@@ -6,6 +6,8 @@ import type {
   GroceryProvider,
   OrderPreview,
   OrderResult,
+  ReserveOptions,
+  ReserveResult,
   SetItemResult,
   TimeslotTier,
 } from "@curbside/core";
@@ -44,6 +46,10 @@ export class HebProvider implements GroceryProvider {
 
   listTimeslots(storeNumber?: number): Promise<TimeslotTier[]> {
     return HebClient.load().listTimeslots(storeNumber);
+  }
+
+  reserveTimeslot(slotId: string, opts?: ReserveOptions): Promise<ReserveResult> {
+    return HebClient.load().reserveTimeslot(slotId, opts);
   }
 
   async previewOrder(): Promise<OrderPreview> {

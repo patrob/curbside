@@ -9,6 +9,8 @@ interface Flags {
   json: boolean;
   execute: boolean;
   yes: boolean;
+  date?: string;
+  channel: "pickup" | "delivery";
   _: string[];
 }
 
@@ -19,12 +21,15 @@ function parse(argv: string[]): Flags {
     json: false,
     execute: false,
     yes: false,
+    channel: "pickup",
     _: [],
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     if (a === "--provider" || a === "-p") f.provider = argv[++i]!;
     else if (a === "--limit" || a === "-n") f.limit = Number(argv[++i]);
+    else if (a === "--date") f.date = argv[++i];
+    else if (a === "--channel") f.channel = argv[++i] === "delivery" ? "delivery" : "pickup";
     else if (a === "--json") f.json = true;
     else if (a === "--execute") f.execute = true;
     else if (a === "--yes" || a === "-y") {
@@ -208,6 +213,33 @@ async function cmdSlots(flags: Flags): Promise<number> {
   return 0;
 }
 
+async function cmdSlot(flags: Flags): Promise<number> {
+  const sub = flags._[0];
+  if (sub !== "reserve") {
+    return usage(`unknown slot subcommand "${sub ?? ""}". Try: curbside slot reserve <id>`);
+  }
+  const id = flags._[1];
+  if (!id) return usage("slot reserve needs a slot id (copy one from `curbside slots`)");
+  const provider = getProvider(flags.provider);
+  if (!provider.reserveTimeslot) {
+    console.error(`✗ ${provider.label} has no reserve support.`);
+    return 1;
+  }
+  const when = flags.date ? `on ${flags.date}` : "today";
+  if (!flags.execute) {
+    console.log(`[dry-run] would reserve ${flags.channel} slot ${id} (${when}).`);
+    console.log("Re-run with -y to hold it (no charge; reserving another overwrites it).");
+    return 0;
+  }
+  const r = await provider.reserveTimeslot(id, { date: flags.date, channel: flags.channel });
+  if (!r.reserved) {
+    console.error(`✗ reserve failed: ${r.detail}`);
+    return 1;
+  }
+  console.log(`✓ reserved: ${r.detail}`);
+  return 0;
+}
+
 async function cmdOrder(flags: Flags): Promise<number> {
   const provider = getProvider(flags.provider);
   if (!provider.previewOrder || !provider.placeOrder) {
@@ -260,6 +292,8 @@ Usage:
   curbside add <term|pid:sku> <qty> [-y]     Set a line to an absolute qty (dry-run without -y)
   curbside rm  <term|pid:sku> [-y]           Remove a line (dry-run without -y)
   curbside slots [-n N] [--json]             List available curbside pickup timeslots
+  curbside slot reserve <id> [--date YYYY-MM-DD] [--channel pickup|delivery] [-y]
+                                             Hold a timeslot (no charge; dry-run without -y)
   curbside order [--place] [-y]              Preview an order; --place submits (real money, OFF by default)
   curbside providers                         List providers
 
@@ -292,6 +326,8 @@ async function main(): Promise<number> {
         return await cmdSet(flags, "rm");
       case "slots":
         return await cmdSlots(flags);
+      case "slot":
+        return await cmdSlot(flags);
       case "order":
         return await cmdOrder(flags);
       case "providers":
